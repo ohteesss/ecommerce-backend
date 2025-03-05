@@ -1,37 +1,53 @@
 import { NextFunction, Response } from "express";
+import Category from "../model/category";
+import Product, { Product as ProductType } from "../model/product";
 import { AppRequest } from "../types";
+import AppError from "../utils/appError";
 import asyncHandler from "../utils/asyncHandler";
-import Product from "../model/products";
-import APIFeatures from "../utils/apiFeature";
+import filterBody from "../utils/filterBody";
+import { createOne, getAll, getOne, updateOne } from "./handlerFactory";
 
-export const createProduct = asyncHandler(
+const productFields: Array<keyof ProductType> = [
+  "name",
+  "price",
+  "discount",
+  "description",
+  "specifications",
+  "images",
+  "category",
+  "user",
+  "quantity",
+  "type",
+];
+
+export const filterCreateProduct = asyncHandler(
   async (req: AppRequest, res: Response, next: NextFunction) => {
-    const newProduct = await Product.create({
-      name: req.body.name,
-      description: req.body.description,
-      specifications: req.body.specifications,
-      price: req.body.price,
-      category: req.body.category,
-      type: req.body.type,
-      seller: req.user!.id,
-    });
-    res.status(201).json({
-      status: "success",
-      data: {
-        product: newProduct,
-      },
-    });
+    req.body.user = req.user?.id;
+    const categories = await Category.findById(req.body.category);
+    if (!categories) return next(new AppError("Category not found", 404));
+
+    req.body = filterBody(req.body, ...productFields);
+
+    console.log(req.body);
+    next();
   }
 );
 
-export const getProducts = asyncHandler(
+export const createProduct = createOne<ProductType>(Product);
+
+export const getProducts = getAll<ProductType>(Product);
+
+export const getProduct = getOne<ProductType>(Product);
+
+export const checkUser = asyncHandler(
   async (req: AppRequest, res: Response, next: NextFunction) => {
-    const products = new APIFeatures(Product.find(), req.query);
-    res.status(200).json({
-      status: "success",
-      data: {
-        products,
-      },
-    });
+    const product = await Product.findById(req.params.id);
+
+    if (req.user?.id !== product?.user)
+      next(new AppError("You can not update a product that is not yours", 403));
+
+    next();
   }
 );
+
+export const updateProduct = updateOne<ProductType>(Product);
