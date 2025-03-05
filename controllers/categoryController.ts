@@ -1,57 +1,20 @@
-import { Request, Response } from "express";
-import Category from "../model/category";
-import asyncHandler from "../utils/asyncHandler";
+import Category, { Category as CategoryType } from "../model/category";
+import {
+  createOne,
+  deleteOne,
+  getAll,
+  getOne,
+  updateOne,
+} from "./handlerFactory";
 
-export const createCategory = asyncHandler(
-  async (req: Request, res: Response) => {
-    const { name, description } = req.body;
-    const category = await Category.create({ name, description });
-    res.status(201).json({
-      status: "success",
-      data: {
-        category,
-      },
-    });
-  }
-);
+export const createCategory = createOne<CategoryType>(Category);
 
-export const getCategories = asyncHandler(
-  async (req: Request, res: Response) => {
-    const categories = await Category.find();
-    res.status(200).json({
-      status: "success",
-      data: {
-        categories,
-      },
-    });
-  }
-);
+export const getCategories = getAll<CategoryType>(Category, [
+  "-description -created_at -updated_at",
+]);
 
-export const getCategory = asyncHandler(async (req: Request, res: Response) => {
-  const category = await Category.findById(req.params.id);
-  res.status(200).json({
-    status: "success",
-    data: {
-      category,
-    },
-  });
-});
+export const getCategory = getOne<CategoryType>(Category, ["-__v"], "category");
 
-export const updateCategory = asyncHandler(
-  async (req: Request, res: Response) => {
-    const { name, description } = req.body;
-    const category = await Category.findByIdAndUpdate(
-      req.params.id,
-      { name, description },
-      {
-        new: true,
-      }
-    );
-    res.status(200).json({
-      status: "success",
-      data: {
-        category,
-      },
-    });
-  }
-);
+export const updateCategory = updateOne<CategoryType>(Category);
+
+export const deleteCategory = deleteOne<CategoryType>(Category);
