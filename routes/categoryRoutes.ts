@@ -4,6 +4,7 @@ import {
   createCategory,
   getCategory,
   updateCategory,
+  deleteCategory,
 } from "../controllers/categoryController";
 import { protect, restrictTo } from "../controllers/authController";
 
@@ -17,4 +18,7 @@ categoryRouter
 categoryRouter
   .route("/:id")
   .get(getCategory)
-  .patch(protect, restrictTo("admin"), updateCategory);
+  .patch(protect, restrictTo("admin"), updateCategory)
+  .delete(protect, restrictTo("admin"), deleteCategory);
+
+export default categoryRouter;
