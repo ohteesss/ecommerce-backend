@@ -8,7 +8,7 @@ import {
 } from "../controllers/orderController";
 import { protect } from "../controllers/authController";
 
-const OrderRouter = Router();
+const OrderRouter = Router({ mergeParams: true });
 
 OrderRouter.route("/").get(protect, getOrders).post(createOrder);
 
