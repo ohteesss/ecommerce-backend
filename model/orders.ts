@@ -1,14 +1,19 @@
-import { Schema, model, Document } from "mongoose";
+import mongoose, { Schema, model, Document } from "mongoose";
+import { UserType } from "./user";
 
+export interface OrderItem {
+  product: typeof mongoose.Schema.ObjectId;
+  quantity: number;
+}
 export interface Order extends Document {
-  user: string;
-  order_items: string[];
+  user: string | UserType;
+  order_items: OrderItem[];
   shipping_address: string;
   payment_method: string;
   items_price: number;
   shipping_price: number;
   total_price: number;
-  status: "pending" | "escrow_hold" | "completed" | "cancelled";
+  status: "pending" | "escrow_hold" | "completed" | "cancelled" | "disputed";
   paid_at: Date;
   updated_at: Date;
 }
@@ -54,4 +59,6 @@ const orderSchema = new Schema<Order>({
   },
 });
 
-export default model<Order>("Order", orderSchema);
+const Order = model<Order>("Order", orderSchema);
+
+export default Order;
