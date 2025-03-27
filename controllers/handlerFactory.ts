@@ -92,17 +92,19 @@ export function getAll<T>(
     let filter = {};
     let docs: any;
     if (req.params.productId) filter = { product: req.params.productId };
-    if (req.params.userId) filter = { user: req.params.userId };
+
+    if (select && select?.length !== 0) {
+      req.query.fields = select.join(" ");
+    }
+
     const query = new APIFeatures(Model.find(filter), req.query)
       .filter()
       .sort()
       .limitFields()
       .paginate();
 
-    if (select && select?.length !== 0)
-      docs = query.query.select(select.join(" "));
-
     docs = await query.query;
+
     if (!docs) {
       return next(new AppError(`No ${modelName || "document"} found`, 404));
     }
