@@ -5,6 +5,7 @@ import {
   protect,
   register,
   registerSeller,
+  resendOTP,
   resetPassword,
   sendOTP,
   testing,
@@ -16,7 +17,7 @@ const authRouter = Router();
 
 authRouter.post("/register", register, sendOTP);
 
-authRouter.post("/register/seller", registerSeller, register);
+authRouter.post("/send-otp", resendOTP);
 
 authRouter.post("/verify", verifySignup);
 
