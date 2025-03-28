@@ -81,6 +81,34 @@ reviewSchema.pre(/^find/, function (this: Query<Review, Review>, next) {
 });
 
 reviewSchema.statics.calcAverageRatings = async function (productId) {
+  // const stats = await this.aggregate([
+  //   {
+  //     $match: { product: productId },
+  //   },
+  //   {
+  //     $group: {
+  //       _id: "$product",
+  //       ratingsQuantity: {
+  //         $sum: 1,
+  //       },
+  //       ratingsAverage: {
+  //         $avg: "$rating",
+  //       },
+  //     },
+  //   },
+  // ]);
+
+  // if (stats.length > 0) {
+  //   await Product.findByIdAndUpdate(productId, {
+  //     ratingsQuantity: stats[0].ratingsQuantity,
+  //     ratingsAverage: stats[0].ratingsAverage,
+  //   });
+  // } else {
+  //   await Product.findByIdAndUpdate(productId, {
+  //     ratingsQuantity: 0,
+  //     ratingsAverage: 4.5,
+  //   });
+  // }
   const stats = await this.aggregate([
     {
       $match: { product: productId },
@@ -98,17 +126,19 @@ reviewSchema.statics.calcAverageRatings = async function (productId) {
     },
   ]);
 
-  if (stats.length > 0) {
-    await Product.findByIdAndUpdate(productId, {
-      ratingsQuantity: stats[0].ratingsQuantity,
-      ratingsAverage: stats[0].ratingsAverage,
-    });
-  } else {
-    await Product.findByIdAndUpdate(productId, {
-      ratingsQuantity: 0,
-      ratingsAverage: 4.5,
-    });
-  }
+  return console.log(stats);
+
+  // if (stats.length > 0) {
+  //   await Product.findByIdAndUpdate(productId, {
+  //     ratingsQuantity: stats[0].ratingsQuantity,
+  //     ratingsAverage: stats[0].ratingsAverage,
+  //   });
+  // } else {
+  //   await Product.findByIdAndUpdate(productId, {
+  //     ratingsQuantity: 0,
+  //     ratingsAverage: 4.5,
+  //   });
+  // }
 };
 
 reviewSchema.post("save", function (this: HydratedDocument<Review>) {

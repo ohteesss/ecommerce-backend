@@ -3,6 +3,7 @@ import { AppRequest } from "../types";
 import asyncHandler from "../utils/asyncHandler";
 import User, { UserType } from "../model/user";
 import AppError from "../utils/appError";
+import { getAll } from "./handlerFactory";
 
 export const getMe = asyncHandler(async (req: AppRequest, res: Response) => {
   res.status(200).json({
@@ -64,14 +65,4 @@ export const getUser = asyncHandler(
   }
 );
 
-export const getAllUsers = asyncHandler(
-  async (req: AppRequest, res: Response, next: NextFunction) => {
-    const users = await User.find();
-    res.status(200).json({
-      status: "success",
-      data: {
-        users,
-      },
-    });
-  }
-);
+export const getAllUsers = getAll(User, ["name verified username"]);

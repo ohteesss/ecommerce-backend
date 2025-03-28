@@ -1,19 +1,28 @@
 import { Router } from "express";
 import {
+  addUserInReq,
   createOrder,
   deleteOrder,
   getOrder,
   getOrders,
+  getSellerOrders,
   updateOrder,
 } from "../controllers/orderController";
-import { protect } from "../controllers/authController";
+import { getUserFromToken, protect } from "../controllers/authController";
 
-const OrderRouter = Router({ mergeParams: true });
+const orderRouter = Router({ mergeParams: true });
 
-OrderRouter.route("/").get(protect, getOrders).post(createOrder);
+orderRouter
+  .route("/")
+  .get(protect, addUserInReq, getOrders)
+  .post(getUserFromToken, createOrder);
 
-OrderRouter.use(protect);
+// orderRouter.route("/:productId/shipping").get(getShippingFee);
 
-OrderRouter.route("/:id").get(getOrder).patch(updateOrder).delete(deleteOrder);
+orderRouter.use(protect);
 
-export default OrderRouter;
+orderRouter.route("/seller/:userId").get(getSellerOrders);
+
+orderRouter.route("/:id").get(getOrder).patch(updateOrder).delete(deleteOrder);
+
+export default orderRouter;

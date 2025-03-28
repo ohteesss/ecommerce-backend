@@ -22,8 +22,8 @@ const signToken = (id: typeof mongoose.Schema.ObjectId) => {
   });
 };
 
-const createSendToken = (user: any, statusCode: number, res: Response) => {
-  const token = signToken(user._id);
+const createSendToken = (user: UserType, statusCode: number, res: Response) => {
+  const token = signToken(user._id as typeof mongoose.Schema.ObjectId);
   const cookieOptions = {
     expires: new Date(
       //eslint-disable-next-line
@@ -35,9 +35,7 @@ const createSendToken = (user: any, statusCode: number, res: Response) => {
 
   if (process.env.NODE_ENV === "production") cookieOptions.secure = true;
   res.cookie("jwt", token, cookieOptions);
-
-  user.password = undefined;
-
+  // user.password = undefined;
   res.status(statusCode).json({
     status: "success",
     token,
@@ -45,10 +43,10 @@ const createSendToken = (user: any, statusCode: number, res: Response) => {
       user: {
         name: user.name,
         email: user.email,
-        role: user.role,
+        roles: user.roles,
+        kycStatus: user.KYCStatus,
         campus: user.campus,
         username: user.username,
-        isBrand: user.isBrand,
       },
     },
   });
@@ -57,11 +55,6 @@ const createSendToken = (user: any, statusCode: number, res: Response) => {
 export const registerSeller = asyncHandler(
   async (req: AppRequest, res: Response, next: NextFunction) => {
     req.body.role = "seller";
-  }
-);
-
-export const register = asyncHandler(
-  async (req: AppRequest, res: Response, next: NextFunction) => {
     const signupPayload = ["name", "email", "password", "role", "campus"];
 
     if (req.body.role === "admin") {
@@ -70,6 +63,36 @@ export const register = asyncHandler(
     const newUser = await User.create(filterBody(req.body, ...signupPayload));
     req.user = newUser;
     next();
+  }
+);
+
+export const register = asyncHandler(
+  async (req: AppRequest, res: Response, next: NextFunction) => {
+    const signupPayload = ["name", "email", "password", "campus"];
+
+    const newUser = await User.create(filterBody(req.body, ...signupPayload));
+    req.user = newUser;
+    next();
+  }
+);
+
+export const resendOTP = asyncHandler(
+  async (req: AppRequest, res: Response, next: NextFunction) => {
+    const { email } = req.body;
+    const user = await User.findOne({ email });
+    if (!user) {
+      return next(
+        new AppError(
+          "User doesnt exist, Check your email address and try again!",
+          404
+        )
+      );
+    }
+    if (user!.verified) {
+      return next(new AppError("User has been verified!", 403));
+    }
+    req.user = user;
+    sendOTP(req, res, next);
   }
 );
 
@@ -246,9 +269,60 @@ export const protect = asyncHandler(
   }
 );
 
-export const restrictTo = (...roles: string[]) => {
+export const getUserFromToken = asyncHandler(
+  async (req: AppRequest, res: Response, next: NextFunction) => {
+    let token: string | undefined;
+    if (
+      req.headers.authorization &&
+      req.headers.authorization.startsWith("Bearer")
+    ) {
+      token = req.headers.authorization.split(" ")[1];
+    }
+
+    if (!token) {
+      return next();
+    }
+
+    // 2) Verification token
+
+    const decoded = jwt.verify(
+      token,
+      process.env.JWT_SECRET as string
+    ) as JwtPayload;
+
+    // 3) Check if user still exists
+    const currentUser = await User.findById(decoded.id).select(
+      "+wallet_balance"
+    );
+    if (!currentUser) {
+      return next(
+        new AppError(
+          "The user belonging to this token does no longer exist",
+          401
+        )
+      );
+    }
+    // 4) Check if user changed password after the token was issued
+    if (currentUser.changedPasswordAfter(decoded.iat!)) {
+      return next(
+        new AppError(
+          "User recently changed password! Please log in again.",
+          401
+        )
+      );
+    }
+
+    // GRANT ACCESS TO PROTECTED ROUTE
+    req.user = currentUser;
+    next();
+  }
+);
+
+export const restrictTo = (
+  ...roles: Array<"user" | "admin" | "seller" | "delivery">
+) => {
   return (req: AppRequest, res: Response, next: NextFunction) => {
-    if (!roles.includes(req.user!.role)) {
+    if (!roles.some((role) => req.user!.roles.includes(role))) {
       return next(
         new AppError("You do not have permission to perform this action", 403)
       );

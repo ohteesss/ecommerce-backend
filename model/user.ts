@@ -1,11 +1,12 @@
-import { Document, Schema, model } from "mongoose";
-import cryptoUpdate from "../utils/cryptoUpdate";
 import argon2 from "argon2";
+import mongoose, { Document, Query, Schema, model } from "mongoose";
 import {
   ALLOWED_LOGIN_ATTEMPTS,
   OTP_EXPIRY,
   TIME_TO_NEXT_ATTEMPT,
 } from "../constant";
+import cryptoUpdate from "../utils/cryptoUpdate";
+import { Review } from "./review";
 
 export interface UserType extends Document {
   name: string;
@@ -13,11 +14,16 @@ export interface UserType extends Document {
   email: string;
   password: string;
   verified: boolean;
-  role: "admin" | "user" | "seller" | "delivery";
+  roles: ["admin" | "user" | "seller" | "delivery"];
   photo: string;
-  brand_photo: string;
-  campus: string;
+
+  campus: typeof mongoose.Schema.ObjectId;
+  brand_logo: string;
+  brand_description: string;
+  phone: string;
+
   isBrand: boolean;
+  KYCStatus?: "NOT_SUBMITTED" | "SUBMITTED" | "APPROVED" | "REJECTED";
   wallet_balance: string;
   passwordResetToken?: string;
   verificationOTP?: string;
@@ -64,23 +70,31 @@ const userSchema = new Schema<UserType>({
     required: true,
     default: false,
   },
-  role: {
-    type: String,
+  roles: {
+    type: [String],
+    enum: ["admin", "user", "seller", "delivery"],
     required: true,
-    default: "user",
+    default: ["user"],
   },
   campus: {
-    type: String,
-    required: true,
+    type: mongoose.Schema.ObjectId,
+    ref: "Campus",
   },
   photo: {
     type: String,
     default: "default.jpg",
   },
-  brand_photo: {
+  brand_logo: {
     type: String,
     default: "default.jpg",
   },
+  brand_description: {
+    type: String,
+  },
+  phone: {
+    type: String,
+  },
+
   isBrand: {
     type: Boolean,
     required: true,
@@ -91,6 +105,11 @@ const userSchema = new Schema<UserType>({
     required: true,
     default: "0",
     select: false,
+  },
+  KYCStatus: {
+    type: String,
+    enum: ["NOT_SUBMITTED", "SUBMITTED", "APPROVED", "REJECTED"],
+    default: "NOT_SUBMITTED",
   },
   verificationOTP: String,
   passwordResetToken: String,
@@ -127,6 +146,14 @@ userSchema.pre("save", async function (next) {
   }
   next();
 });
+
+// userSchema.pre(/find/, function (this: Query<Review, Review>, next) {
+//   this.populate({
+//     path: "campus",
+//     select: "name",
+//   });
+//   next();
+// });
 
 userSchema.methods.createVerificationToken = function () {
   const OTP = `${Math.floor(Math.random() * 1000000)}`.padStart(6, "0");
@@ -176,4 +203,6 @@ userSchema.methods.incorrectLogin = async function () {
   return this.failedAttempt;
 };
 
-export default model<UserType>("User", userSchema);
+const User = model<UserType>("User", userSchema);
+
+export default User;

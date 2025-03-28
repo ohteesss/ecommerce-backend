@@ -1,11 +1,12 @@
 import { NextFunction, Response } from "express";
 import Category from "../model/category";
-import Product, { Product as ProductType } from "../model/product";
+import Product, { ProductType as ProductType } from "../model/product";
 import { AppRequest } from "../types";
 import AppError from "../utils/appError";
 import asyncHandler from "../utils/asyncHandler";
 import filterBody from "../utils/filterBody";
 import { createOne, getAll, getOne, updateOne } from "./handlerFactory";
+import path from "path";
 
 const productFields: Array<keyof ProductType> = [
   "name",
@@ -16,13 +17,16 @@ const productFields: Array<keyof ProductType> = [
   "images",
   "category",
   "user",
+  "campus",
   "quantity",
   "type",
 ];
 
 export const filterCreateProduct = asyncHandler(
   async (req: AppRequest, res: Response, next: NextFunction) => {
+    console.log(req.user);
     req.body.user = req.user?.id;
+    req.body.campus = req.user?.campus;
     const categories = await Category.findById(req.body.category);
     if (!categories) return next(new AppError("Category not found", 404));
 
@@ -35,9 +39,18 @@ export const filterCreateProduct = asyncHandler(
 
 export const createProduct = createOne<ProductType>(Product);
 
-export const getProducts = getAll<ProductType>(Product);
+export const getProducts = getAll<ProductType>(Product, [
+  "name",
+  "price",
+  "images",
+  "quantity",
+  "ratingsAverage",
+]);
 
-export const getProduct = getOne<ProductType>(Product);
+export const getProduct = getOne<ProductType>(Product, undefined, "Product", {
+  path: "category user",
+  select: "name",
+});
 
 export const checkUser = asyncHandler(
   async (req: AppRequest, res: Response, next: NextFunction) => {

@@ -1,10 +1,14 @@
 import mongoose, { Schema, Document, model, Query } from "mongoose";
 import { Review } from "./review";
+import slugify from "slugify";
 
-export interface Product extends Document {
+export interface ProductType extends Document {
   name: string;
+  slug: string;
   price: number;
   discount: number;
+  // actual_price = price - discount
+  actual_price: number;
   description: string;
   specifications: string[];
   images: string[];
@@ -15,15 +19,20 @@ export interface Product extends Document {
   created_at: Date;
   updated_at: Date;
   reviews: Review[];
+  campus: typeof mongoose.Schema.ObjectId;
   ratingsQuantity: number;
   ratingsAverage: number;
 }
 
-const productSchema = new Schema<Product>(
+const productSchema = new Schema<ProductType>(
   {
     name: {
       type: String,
       required: true,
+    },
+    slug: {
+      type: String,
+      unique: true,
     },
     price: {
       type: Number,
@@ -49,6 +58,11 @@ const productSchema = new Schema<Product>(
     category: {
       type: mongoose.Schema.ObjectId,
       ref: "Category",
+      required: true,
+    },
+    campus: {
+      type: mongoose.Schema.ObjectId,
+      ref: "Campus",
       required: true,
     },
     user: {
@@ -86,7 +100,7 @@ const productSchema = new Schema<Product>(
 );
 
 // virtuals
-productSchema.virtual("actual_price").get(function (this: Product) {
+productSchema.virtual("actual_price").get(function (this: ProductType) {
   return this.price - (this.discount || 0);
 });
 
@@ -96,18 +110,33 @@ productSchema.virtual("reviews", {
   localField: "_id",
 });
 
-productSchema.pre(/^find/, function (this: Query<Product, Product>, next) {
-  this.populate({
-    path: "category",
-    select: "name",
-  });
-
-  this.populate({
-    path: "user",
-    select: "username",
-  });
+productSchema.pre("save", async function (next) {
+  let slug = slugify(this.name, { lower: true });
+  if ((await Product.find({ slug }).countDocuments()) > 0) {
+    this.slug = `${slug}-${
+      (await Product.find({ slug }).countDocuments()) + 1
+    }`;
+  } else {
+    this.slug = slug;
+  }
   next();
 });
+
+productSchema.pre(
+  /^find/,
+  function (this: Query<ProductType, ProductType>, next) {
+    this.populate({
+      path: "category",
+      select: "name",
+    });
+
+    this.populate({
+      path: "user",
+      select: "username",
+    });
+    next();
+  }
+);
 
 productSchema.pre("save", function (next) {
   if (this.isNew) {
@@ -117,6 +146,6 @@ productSchema.pre("save", function (next) {
   next();
 });
 
-const Product = model<Product>("Product", productSchema);
+const Product = model<ProductType>("Product", productSchema);
 
 export default Product;
